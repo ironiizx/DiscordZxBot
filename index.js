@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-if (!global.fetch) global.fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+if (!global.fetch) global.fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 const {
   Client,
