@@ -56,76 +56,94 @@ function fakeGPTResponse(message, userId) {
     return waitingMessages[Math.floor(Math.random() * waitingMessages.length)];
   }
 
+  // Basic Commands
   if (text === '!contact') {
     contactedClients[userId] = true;
     return "📨 Your request has been forwarded. Please wait to be contacted by iRoniiZx.";
   }
 
-  if (text === '!summary') {
-    return buildSummary(userId) + personalNote();
-  }
+  if (text === '!summary') return buildSummary(userId) + personalNote();
+  if (text === '!modify') return "✏️ You can now update any of your previous answers. Once you're done, type `!summary` again to confirm.";
+  if (text === '!tips') return "📌 Tip: Try to share a clear idea, references or colors that define your vibe! The more info, the better result." + personalNote();
+  if (text === '!process') return "🛠️ Process: You send details > I design the thumbnail > You get preview > Final delivery > Minor adjustments if needed." + personalNote();
+  if (text === '!portfolio') return "🎨 You can see my past works here: https://www.behance.net/iRoniiZx" + personalNote();
+  if (text === '!commands') return "📖 Available commands:\n!order – Start an order\n!summary – See your order summary\n!modify – Modify your order\n!tips – Get useful tips\n!process – See how it works\n!portfolio – Check my work\n!contact – Ask for direct support" + personalNote();
 
-  if (text === '!modify') {
-    return "✏️ Sure! You can now update any of your previous answers. Once you're done, type `!summary` again to confirm.";
-  }
-
-  if (["hola", "hello", "hi"].some(w => text.includes(w))) {
+  // Greetings and casual
+  if (["hola", "hello", "hi", "hey"].some(w => text.includes(w))) {
     return "👋 Hi! Would you like to **create an order** or just **ask a question**?\n\nTo create an order, type `!order`. If you have a question, just type it below.";
   }
-  if (["gracias", "thanks", "thank you"].some(w => text.includes(w))) {
+  if (["thanks", "thank you", "gracias"].some(w => text.includes(w))) {
     return "🙏 You're welcome! Let me know if there's anything else I can help with." + personalNote();
   }
-  if (["chau", "adios", "bye"].some(w => text.includes(w))) {
+  if (["bye", "goodbye", "see ya", "chau"].some(w => text.includes(w))) {
     return "👋 Bye! Feel free to message anytime if you need a new thumbnail." + personalNote();
   }
 
+  // Off-topic filtering
   const offTopic = [
-    'trump', 'biden', 'argentina', 'president', 'guerra', 'politics', 'elon musk', 'cristiano', 'messi', 'kanye', 'taylor swift',
-    'inflación', 'dolar', 'noticias', 'clima', 'quién ganó', 'mundial', 'película', 'serie', 'streaming',
-    'israel', 'palestina', 'sionismo', 'hamas', 'terrorismo', 'judío', 'musulmán',
-    'zionism', 'palestine', 'hamas', 'terrorism', 'jew', 'muslim'
+    'trump', 'biden', 'argentina', 'president', 'politics', 'news', 'elon', 'messi', 'kanye',
+    'israel', 'palestine', 'hamas', 'terrorism', 'war', 'climate', 'movie', 'series', 'celebrity'
   ];
-  if (offTopic.some(word => text.includes(word))) {
-    return "I'm just a bot that helps you with your Fortnite thumbnail order 😅 Let me know how I can assist with that!" + personalNote();
+  if (offTopic.some(w => text.includes(w))) {
+    return "I'm just a bot that helps with Fortnite thumbnails 😊 Let me know how I can assist with your order!" + personalNote();
   }
 
-  if (text.includes('price') || text.includes('cuánto cuesta') || text.includes('cost')) {
-    return "💰 Pricing:\n\n**Normal Delivery**\n• $45–100 USD\n• Estimated time: 2 weeks base\n\n**Fast Delivery**\n• $90–150 USD\n• Completed within 48 to 72 hours (up to 96h in rare cases)" + personalNote();
+  // Pricing & Payment
+  if (text.match(/(price|cost|how much|cuánto|rate|fee)/)) {
+    return "💰 Pricing:\n\n**Normal Delivery**: $45–100 USD (2 weeks)\n**Fast Delivery**: $90–150 USD (48–72h)\n*Prices vary depending on complexity.*" + personalNote();
   }
 
-  if (text.includes('fast delivery') || text.includes('normal delivery') || text.includes('tiempo de entrega') || text.includes('cuánto tarda') || text.includes('entrega')) {
-    return "⏱️ Normal delivery takes ~2 weeks. Fast delivery is within 48–72 hours. Delivery depends on queue and urgency." + personalNote();
+  if (text.match(/(payment|how to pay|paypal|wise|crypto|method|transfer)/)) {
+    return "💳 I accept PayPal, Crypto, and Wise. Let me know your preference so I can send the correct details." + personalNote();
   }
 
-  if (text.includes('paypal') || text.includes('crypto') || text.includes('wise') || text.includes('pago') || text.includes('método de pago') || text.includes('métodos de pago') || text.includes('payment') || text.includes('payment method') || text.includes('pay')) {
-    return "💳 I accept PayPal, Crypto and Wise. Let me know what works best for you." + personalNote();
+  // Delivery
+  if (text.match(/(delivery|fast delivery|normal delivery|how long|wait time|entrega|cuánto tarda)/)) {
+    return "🚚 Normal delivery takes ~2 weeks. Fast delivery is within 48–72 hours depending on queue." + personalNote();
   }
 
-  if (text.includes('reembolso') || text.includes('refund')) {
-    return "🔁 Once the work starts or is delivered, refunds aren't possible due to the time and creative effort invested." + personalNote();
+  // Refund
+  if (text.match(/(refund|reembolso|return money|cancel order)/)) {
+    return "🔁 I don’t offer refunds once the work has started or been delivered, due to the creative effort involved." + personalNote();
   }
 
-  if (text.includes('modificar') || text.includes('cambio') || text.includes('corregir') || text.includes('changes')) {
-    return "✏️ After delivery, I can help with small adjustments or fixes. Full remakes based on new ideas aren’t included." + personalNote();
+  // Modifications
+  if (text.match(/(modify|change|adjustment|fix|correction|edit|update info)/)) {
+    return "✏️ After delivery, I'm open to minor adjustments. Full remakes based on new ideas aren’t included." + personalNote();
   }
 
-  if (text.includes('idea') || text.includes('concept') || text.includes('mapa')) {
-    return "🎨 Could you describe your idea or the vibe you're going for? That helps me understand how to visualize your thumbnail." + personalNote();
+  // Ideas & Concepts
+  if (text.match(/(idea|concept|theme|vibe|what should i do)/)) {
+    return "🎯 Feel free to share your idea, theme, or any concept that represents your map or goal!" + personalNote();
   }
 
-  if (text.includes('referencia') || text.includes('image') || text.includes('te paso') || text.includes('adjunto') || text.includes('enviar imagen')) {
-    return "📎 Great! Feel free to send any reference, screenshot, or example that reflects what you want in the thumbnail." + personalNote();
+  // References
+  if (text.match(/(reference|image|send screenshot|attach|example|drawing|photo)/)) {
+    return "📎 You can send references, examples, drawings, or screenshots to better explain your idea." + personalNote();
   }
 
-  if (text.includes('plagio') || text.includes('uso') || text.includes('editar después') || text.includes('reusar')) {
-    return "📄 PSDs are available for full custom thumbnails, but please don’t reuse elements for new thumbnails without permission." + personalNote();
+  // Usage, PSDs
+  if (text.match(/(reuse|psd|plagiarism|use again|template|edit later)/)) {
+    return "📄 PSD files are available for fully custom thumbnails. Please don’t reuse parts for new versions without agreement." + personalNote();
   }
 
-  if (text.includes('urgente') || text.includes('lo necesito hoy') || text.includes('express')) {
-    return "⚡ I offer fast delivery (48–72h). Let me know if you'd like to go for that option!" + personalNote();
+  // Urgency
+  if (text.match(/(urgent|asap|today|express|hurry|rush)/)) {
+    return "⚡ I offer fast delivery (48–72h). Let me know if you want to proceed with that option!" + personalNote();
   }
 
-  return "Thanks! Could you tell me more about your thumbnail idea or the style you're imagining?" + personalNote();
+  // Multi-thumbnails or packs
+  if (text.match(/(multiple|pack|bundle|more than one|group of thumbnails|several maps)/)) {
+    return "🧩 I can create packs of thumbnails for multiple maps. Let me know how many you need and I’ll send options!" + personalNote();
+  }
+
+  // File formats
+  if (text.match(/(format|file type|resolution|dimensions|jpg|png|1080|1920)/)) {
+    return "🖼️ Thumbnails are usually delivered in 1920x1080 PNG. Let me know if you need other formats." + personalNote();
+  }
+
+  return "🧠 Let me know more about your thumbnail idea or ask anything about the process!" + personalNote();
 }
 
 module.exports = fakeGPTResponse;
