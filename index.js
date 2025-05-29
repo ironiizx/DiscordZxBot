@@ -213,13 +213,8 @@ Please wait for **iRoniiZx** to respond. To modify your order, type \`!modify\`.
 
     const orderChannel = await client.channels.fetch(ORDER_CHANNEL_ID).catch(console.error);
     if (orderChannel && orderChannel.isTextBased()) {
-      const alreadyOrdered = completedOrders.has(userId);
-      const actionLabel = alreadyOrdered
-        ? `✏️ <@${userId}> has modified their order`
-        : `🆕 **New Order from <@${userId}>**`;
-
       await orderChannel.send({
-        content: `${actionLabel}
+        content: `🆕 **New Order from <@${userId}>**
 
 📦 **Order Summary:**
 🚚 **Delivery:** ${order.delivery.replace('_', ' ')}
