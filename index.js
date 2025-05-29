@@ -33,9 +33,20 @@ const userTicketMap = new Map();
 client.once(Events.ClientReady, async () => {
   console.log(`🤖 Bot is online as ${client.user.tag}`);
 
-  const guild = await client.guilds.fetch(GUILD_ID);
-  const members = await guild.members.fetch();
-  const channels = await guild.channels.fetch();
+  if (!GUILD_ID) {
+    console.error("❌ GUILD_ID is not defined in the environment.");
+    return;
+  }
+
+  const guild = await client.guilds.fetch(GUILD_ID).catch(err => {
+    console.error("❌ Failed to fetch guild:", err);
+  });
+  if (!guild) return;
+
+  const members = await guild.members.fetch().catch(console.error);
+  const channels = await guild.channels.fetch().catch(console.error);
+
+  if (!members || !channels) return;
 
   for (const [memberId, member] of members) {
     if (member.user.bot) continue;
@@ -69,7 +80,6 @@ client.once(Events.ClientReady, async () => {
       });
 
       userTicketMap.set(member.id, channel.id);
-
       await channel.send(`👋 Welcome <@${member.id}>! You can start your order or consultation here. Use \`!order\` to begin.`);
     }
   }
@@ -106,7 +116,9 @@ client.on(Events.GuildMemberRemove, async member => {
   const channelId = userTicketMap.get(member.id);
   if (!channelId) return;
 
-  const guild = await client.guilds.fetch(GUILD_ID);
+  const guild = await client.guilds.fetch(GUILD_ID).catch(console.error);
+  if (!guild) return;
+
   const channel = await guild.channels.fetch(channelId).catch(() => null);
   if (channel) {
     await channel.delete().catch(console.error);
@@ -300,6 +312,13 @@ Please wait for **iRoniiZx** to respond. To modify your order, type \`!modify\`.
 
   const reply = fakeGPTResponse(text, userId);
   if (reply) message.channel.send(reply);
+});
+
+process.on('unhandledRejection', err => {
+  console.error('❌ Unhandled promise rejection:', err);
+});
+process.on('uncaughtException', err => {
+  console.error('❌ Uncaught exception:', err);
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
