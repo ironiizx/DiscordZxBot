@@ -23,6 +23,9 @@ const registrationStep = new Map();
 const registeredUsers = new Set();
 const completedOrders = new Set();
 const registrationInitialized = new Set();
+const emailPromptSent = new Set();
+const confirmSentFlag = new Set();
+
 const userTicketMap = new Map();
 
 function isUserRegistered(userId) {
@@ -84,20 +87,21 @@ client.on(Events.GuildMemberRemove, async (member) => {
   }
 });
 
+ 
+
+
 client.on(Events.GuildMemberAdd, async (member) => {
-if (registeredUsers.has(member.id)) {
-  console.log(`⚠️ Member ${member.id} is already registered. Skipping setup.`);
-  return;
-}
+  // 🔁 Reiniciar registro siempre
+  registeredUsers.delete(member.id);
+  registrationInitialized.delete(member.id);
+  registrationStep.delete(member.id);
+  emailPromptSent.delete(member.id);
+  confirmSentFlag.delete(member.id);
+  registrationData.delete(member.id);
 
-if (registrationInitialized.has(member.id)) {
-  console.log(`⚠️ Member ${member.id} already started registration. Skipping duplicate init.`);
-  return;
-}
-
-let registroChannel = member.guild.channels.cache.find(
-  ch => ch.name === `registro-${member.id}`
-);
+  let registroChannel = member.guild.channels.cache.find(
+    ch => ch.name === `registro-${member.id}`
+  );
 
   if (!registroChannel) {
     registroChannel = await member.guild.channels.create({
@@ -118,48 +122,33 @@ let registroChannel = member.guild.channels.cache.find(
         }
       ]
     });
-  } else {
-    await registroChannel.permissionOverwrites.edit(member.guild.roles.everyone, {
-      ViewChannel: false
-    });
-    await registroChannel.permissionOverwrites.edit(member.id, {
-      ViewChannel: true,
-      SendMessages: true
-    });
-    await registroChannel.permissionOverwrites.edit(client.user.id, {
-      ViewChannel: true,
-      SendMessages: true
-    });
-
-    try {
-      const messages = await registroChannel.messages.fetch({ limit: 10 });
-      await registroChannel.bulkDelete(messages);
-    } catch (error) {
-      console.error('❌ No se pudieron borrar los mensajes previos en #registro:', error);
-    }
   }
 
+  // Limpiar mensajes viejos si el canal existe
+  try {
+    const messages = await registroChannel.messages.fetch({ limit: 10 });
+    await registroChannel.bulkDelete(messages);
+  } catch (err) {
+    console.error('❌ No se pudieron borrar los mensajes previos:', err);
+  }
 
+  registrationInitialized.add(member.id);
+  registrationStep.set(member.id, 'awaitingAlias');
 
-
-
-registrationInitialized.add(member.id);
-registrationStep.set(member.id, 'awaitingAlias');
-
-await registroChannel.send({
-  content: `👋 Welcome <@${member.id}> to **ZxCreativeFN**!\nPlease enter your **alias or name**:`
-});
-
+  await registroChannel.send({
+    content: `👋 Welcome <@${member.id}> to **ZxCreativeFN**!\nPlease enter your **alias or name**:`
+  });
 
   const role = member.guild.roles.cache.find(r => r.name.toLowerCase() === 'pendient');
-  if (role) {
-    await member.roles.add(role).catch(console.error);
-  }
+  if (role) await member.roles.add(role).catch(console.error);
 });
+
 
 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
+
+  const userId = message.author.id;
 
   const inRegisterChannel = message.channel.name === 'registro' || message.channel.name === 'register';
   const step = registrationStep.get(message.author.id);
@@ -210,19 +199,19 @@ if (step === 'awaitingEmail') {
 
 
   const text = message.content.toLowerCase();
-  const userId = message.author.id;
+  const order = client.orderData?.[userId];
 
   if (!isUserRegistered(userId)) return;
 
 if (text === '!order') {
   if (!client.orderData) client.orderData = {};
 
-  if (client.orderData[userId] && completedOrders.has(userId)) {
-    await message.channel.send('⚠️ You already started an order. Type `!modify` to restart.');
-    return;
-  }
+  // 🔄 Limpiar cualquier estado previo
+  delete client.orderData[userId];
+  completedOrders.delete(userId);
 
   client.orderData[userId] = { step: 'delivery' };
+
 
   const messages = await message.channel.messages.fetch({ limit: 10 });
   const botMessages = messages.filter(m => m.author.id === client.user.id && m.components.length > 0);
@@ -244,7 +233,7 @@ if (text === '!order') {
   });
   return;
 }
-
+console.log('🧾 Current order before confirm:', order);
 if (text === '!confirm') {
   if (completedOrders.has(userId)) {
     await message.channel.send('⚠️ Your order has already been confirmed.');
@@ -347,12 +336,11 @@ if (text === '!modify') {
     return;
   }
 
-  const order = client.orderData;
-  if (order && order.step === 'references') {
-    order.references = (order.references || '') + `\n${message.content}`;
-    client.orderData = order;
-    return;
-  }
+if (order && order.step === 'references') {
+  order.references = (order.references || '') + `\n${message.content}`;
+  client.orderData[userId] = order;
+  return;
+}
 
   const reply = fakeGPTResponse(text, userId);
   if (reply) message.channel.send(reply);
@@ -414,45 +402,51 @@ if (interaction.isButton() && interaction.customId === `confirm_registration_${u
     registrationStep.delete(userId);
   }
 
-  if (interaction.isStringSelectMenu()) {
-    const order = client.orderData || {};
+ 
+if (interaction.isStringSelectMenu()) {
+  if (!client.orderData) client.orderData = {};
+  const order = client.orderData[interaction.user.id] || {};
 
-    if (interaction.customId === 'select_delivery') {
-      order.delivery = interaction.values[0];
-      order.step = 'payment';
-      client.orderData = order;
+  if (interaction.customId === 'select_delivery') {
+    order.delivery = interaction.values[0];
+    order.step = 'payment';
+    client.orderData[interaction.user.id] = order;
 
-      await interaction.reply({
-        content: '💳 Please select a payment method:',
-        components: [
-          new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-              .setCustomId('select_payment')
-              .setPlaceholder('Choose payment method')
-              .addOptions([
-                { label: 'PayPal', value: 'PayPal' },
-                { label: 'Crypto', value: 'Crypto' },
-                { label: 'Wise', value: 'Wise' }
-              ])
-          )
-        ]
-      });
-    }
+    await interaction.reply({
+      content: '💳 Please select a payment method:',
+      components: [
+        new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('select_payment')
+            .setPlaceholder('Choose payment method')
+            .addOptions([
+              { label: 'PayPal', value: 'PayPal' },
+              { label: 'Crypto', value: 'Crypto' },
+              { label: 'Wise', value: 'Wise' }
+            ])
+        )
+      ]
+    });
+  }
 
-    if (interaction.customId === 'select_payment') {
-      order.payment = interaction.values[0];
-      order.step = 'references';
-      client.orderData = order;
-if (!interaction.replied) {
-  await interaction.update({
-    content: '🖼️ Please describe your idea or send reference images. Once done, type `!confirm`.',
-    components: []
-  }).catch(console.error);
+  if (interaction.customId === 'select_payment') {
+    order.payment = interaction.values[0];
+    order.step = 'references';
+    client.orderData[interaction.user.id] = order;
+
+await interaction.reply({
+  content: '🖼️ Please describe your idea or send reference images. Once done, type `!confirm`.',
+  ephemeral: false
+});
+
+  }
 }
 
 
-    }
-  }
+
+
+
+
 });
 
 process.on('unhandledRejection', err => console.error('❌ Unhandled promise rejection:', err));
