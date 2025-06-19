@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "email-server": "node email-server.js"
   },
   "keywords": [],
   "author": "",
@@ -14,8 +15,10 @@
   },
   "dependencies": {
     "@emailjs/nodejs": "^5.0.2",
+    "cors": "^2.8.5",
     "discord.js": "^14.18.0",
     "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "node-fetch": "^3.3.2"
   }
 }
