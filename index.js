@@ -43,13 +43,12 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// 🔄 Cargar usuarios ya registrados desde clients.json (puede ser desactivado para testing)
+
 const clientsFile = path.join(__dirname, 'clients.json');
 if (fs.existsSync(clientsFile)) {
   try {
     const savedClients = JSON.parse(fs.readFileSync(clientsFile, 'utf8'));
     
-    // ⚠️ Comentar esta línea para permitir múltiples registros durante testeo
     savedClients.forEach(client => registeredUsers.add(client.id));
 
     console.log('✅ Loaded registered users from clients.json');
@@ -90,8 +89,7 @@ client.on(Events.GuildMemberRemove, async (member) => {
  
 
 
-client.on(Events.GuildMemberAdd, async (member) => {
-  // 🔁 Reiniciar registro siempre
+  client.on(Events.GuildMemberAdd, async (member) => {
   registeredUsers.delete(member.id);
   registrationInitialized.delete(member.id);
   registrationStep.delete(member.id);
@@ -124,7 +122,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
     });
   }
 
-  // Limpiar mensajes viejos si el canal existe
   try {
     const messages = await registroChannel.messages.fetch({ limit: 10 });
     await registroChannel.bulkDelete(messages);
@@ -145,8 +142,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
 
 
-client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) return;
+  client.on(Events.MessageCreate, async (message) => {
+    if (message.author.bot) return;
 
   const userId = message.author.id;
 
@@ -155,25 +152,25 @@ client.on(Events.MessageCreate, async (message) => {
 
   if (!isUserRegistered(message.author.id) && !inRegisterChannel) return;
 
-if (step === 'awaitingAlias') {
-  if (!emailPromptSent.has(userId)) {
-    registrationData.set(userId, { alias: message.content });
-    registrationStep.set(userId, 'awaitingEmail');
-    emailPromptSent.add(userId); // ✅ Marcar que ya se pidió el email
-    await message.channel.send(`<@${userId}> Got it! Now, please enter your **email address**:`);
+  if (step === 'awaitingAlias') {
+    if (!emailPromptSent.has(userId)) {
+      registrationData.set(userId, { alias: message.content });
+      registrationStep.set(userId, 'awaitingEmail');
+      emailPromptSent.add(userId); 
+      await message.channel.send(`<@${userId}> Got it! Now, please enter your **email address**:`);
+    }
+    return;
   }
-  return;
-}
 
 
-if (step === 'awaitingEmail') {
-  const data = registrationData.get(message.author.id) || {};
-  data.email = message.content;
+  if (step === 'awaitingEmail') {
+    const data = registrationData.get(message.author.id) || {};
+    data.email = message.content;
 
-if (step === 'awaitingEmail') {
-  if (confirmSentFlag.has(userId)) return; // ← 🔒 Evitás enviar 2 veces
+  if (step === 'awaitingEmail') {
+    if (confirmSentFlag.has(userId)) return; 
 
-  confirmSentFlag.add(userId); // ← ✅ Marcar como enviado ANTES
+  confirmSentFlag.add(userId); 
 
   const data = registrationData.get(userId) || {};
   data.email = message.content;
@@ -203,10 +200,10 @@ if (step === 'awaitingEmail') {
 
   if (!isUserRegistered(userId)) return;
 
-if (text === '!order') {
-  if (!client.orderData) client.orderData = {};
+  if (text === '!order') {
+    if (!client.orderData) client.orderData = {};
 
-  // 🔄 Limpiar cualquier estado previo
+  
   delete client.orderData[userId];
   completedOrders.delete(userId);
 
@@ -417,7 +414,7 @@ if (interaction.isButton() && interaction.customId === `confirm_registration_${u
   }
 
  
-if (interaction.isStringSelectMenu()) {
+  if (interaction.isStringSelectMenu()) {
   if (!client.orderData) client.orderData = {};
   const order = client.orderData[interaction.user.id] || {};
 
@@ -448,7 +445,7 @@ if (interaction.isStringSelectMenu()) {
     order.step = 'references';
     client.orderData[interaction.user.id] = order;
 
-await interaction.reply({
+  await interaction.reply({
   content: '🖼️ Please describe your idea or send reference images. Once done, type `!confirm`.',
   ephemeral: false
 });
