@@ -199,42 +199,63 @@ https://www.behance.net/iRoniiZx`);
       const userId = interaction.user.id;
 
       if (interaction.isButton() && interaction.customId === `confirm_registration_${userId}`) {
-        const data = registrationData.get(userId);
-        if (!data) {
-          return interaction.reply({ content: "❌ Registration data not found.", ephemeral: true });
-        }
+  const data = registrationData.get(userId);
+  if (!data) {
+    return interaction.reply({ content: "❌ Registration data not found.", ephemeral: true });
+  }
 
-        const guild = interaction.guild;
-        const orderChannel = await guild.channels.create({
-          name: `order-from-${interaction.user.username}`,
-          type: ChannelType.GuildText,
-          parent: process.env.TICKET_CATEGORY_ID,
-          permissionOverwrites: [
-            {
-              id: guild.roles.everyone,
-              deny: [PermissionsBitField.Flags.ViewChannel]
-            },
-            {
-              id: userId,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            },
-            {
-              id: client.user.id,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
-            }
-          ]
-        });
+  const fs = require('fs');
+  const path = require('path');
+  const clientsFile = path.join(__dirname, 'clients.json');
 
-        await orderChannel.send(`👋 Welcome <@${userId}>! You can start your order or consultation here. Use \`!order\` to begin.`);
+  // Guardar datos en clients.json
+  try {
+    const existing = JSON.parse(fs.readFileSync(clientsFile, 'utf8'));
+    existing.push({
+      id: userId,
+      alias: data.alias,
+      email: data.email
+    });
+    fs.writeFileSync(clientsFile, JSON.stringify(existing, null, 2));
+  } catch (err) {
+    console.error('❌ Error writing to clients.json:', err);
+  }
 
-        await interaction.reply({
-          content: `✅ Registration completed!\n**Name:** ${data.alias}\n**Email:** ${data.email}`,
-          ephemeral: true
-        });
+  const guild = interaction.guild;
 
-        registeredUsers.add(userId);
-        registrationData.delete(userId);
+  // Crear canal de orden
+  const orderChannel = await guild.channels.create({
+    name: `order-from-${interaction.user.username}`,
+    type: ChannelType.GuildText,
+    parent: process.env.TICKET_CATEGORY_ID,
+    permissionOverwrites: [
+      {
+        id: guild.roles.everyone,
+        deny: [PermissionsBitField.Flags.ViewChannel]
+      },
+      {
+        id: userId,
+        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+      },
+      {
+        id: client.user.id,
+        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
       }
+    ]
+  });
+
+  // Enviar mensaje de confirmación al canal de orden
+  await orderChannel.send(`✅ Registration completed!\n**Name:** ${data.alias}\n**Email:** ${data.email}\nYou can now use \`!order\` to start.`);
+
+  // Eliminar canal de registro
+  const registerChannel = interaction.channel;
+  await registerChannel.delete().catch(console.error);
+
+  registeredUsers.add(userId);
+  registrationData.delete(userId);
+  registrationStep.delete(userId);
+}
+
 
       if (interaction.isStringSelectMenu()) {
         const order = client.orderData || {};
