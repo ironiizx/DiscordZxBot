@@ -400,6 +400,20 @@ if (interaction.isButton() && interaction.customId === `confirm_registration_${u
     registeredUsers.add(userId);
     registrationData.delete(userId);
     registrationStep.delete(userId);
+
+    try {
+  const authData = process.env.GOOGLE_SHEETS_CREDENTIALS;
+  const spreadsheetId = '1U833WHIW1WMhdV-1QU2DbiCSwMCxvs69pCa6wvj5lOs';
+  await appendToGoogleSheet(authData, spreadsheetId, 'Clients', [
+    userId,
+    data.alias,
+    data.email,
+    new Date().toISOString()
+  ]);
+  console.log('✅ Cliente guardado en Google Sheets');
+} catch (error) {
+  console.error('❌ Error al guardar en Google Sheets:', error);
+}
   }
 
  
@@ -453,3 +467,24 @@ process.on('unhandledRejection', err => console.error('❌ Unhandled promise rej
 process.on('uncaughtException', err => console.error('❌ Uncaught exception:', err));
 
 client.login(process.env.DISCORD_BOT_TOKEN);
+
+
+const { google } = require('googleapis');
+
+async function appendToGoogleSheet(authData, spreadsheetId, sheetName, values) {
+  const auth = new google.auth.GoogleAuth({
+    credentials: JSON.parse(authData),
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+
+  const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${sheetName}!A1`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [values],
+    },
+  });
+}
